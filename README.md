@@ -1,6 +1,7 @@
 # Staking Rewards Patterns
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/TSxo/staking-rewards/actions/workflows/ci.yml/badge.svg)](https://github.com/TSxo/staking-rewards/actions/workflows/ci.yml)
 
 This repository serves as an educational resource that explains the foundational
 staking rewards formula underpinning a vast number of systems across decentralized
