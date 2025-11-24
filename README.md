@@ -90,7 +90,6 @@ Contracts are located in the [src](https://github.com/TSxo/staking-rewards/tree/
 ```
 src
 ├── discrete-staking-rewards
-├── mocks
 ├── staking-rewards
 ├── staking-rewards-multi
 └── utils

@@ -3,7 +3,7 @@
 pragma solidity 0.8.30;
 
 import { Test } from "forge-std/Test.sol";
-import { Assert } from "../../src/utils/Assert.sol";
+import { Assert } from "src/utils/Assert.sol";
 
 contract AssertTest is Test {
     // -------------------------------------------------------------------------
