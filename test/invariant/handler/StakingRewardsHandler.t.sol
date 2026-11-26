@@ -1,26 +1,29 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { HandlerBase } from "./HandlerBase.t.sol";
 import { StakingRewards } from "src/staking-rewards/StakingRewards.sol";
 import { MockToken } from "test/mocks/MockToken.sol";
 
 contract StakingRewardsHandler is HandlerBase {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // State
+    // =========================================================================
 
     StakingRewards private _staking;
     MockToken private _stakingToken;
     MockToken private _rewardToken;
 
     uint256 public ghost_prevIndex;
+    uint256 public ghost_prevCurrentIndex;
     mapping(address => uint256) public ghost_prevUserIndex;
     uint256 public ghost_totalRewardsDeposited;
     uint256 public ghost_totalRewardsClaimed;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constructor
+    // =========================================================================
 
     constructor(
         address owner,
@@ -38,8 +41,9 @@ contract StakingRewardsHandler is HandlerBase {
         ghost_prevIndex = _staking.index();
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Public
+    // =========================================================================
 
     function stake(uint256 amount, uint256 actorSeed) public useActor(actorSeed) {
         amount = bound(amount, 1, MINT_AMOUNT);
@@ -74,7 +78,7 @@ contract StakingRewardsHandler is HandlerBase {
     }
 
     function setDuration(uint256 duration) public useOwner {
-        if (block.timestamp <= _staking.periodFinish()) return;
+        if (vm.getBlockTimestamp() <= _staking.periodFinish()) return;
 
         _updateIndexes();
         duration = bound(duration, 1, 7 days);
@@ -97,15 +101,9 @@ contract StakingRewardsHandler is HandlerBase {
         _assertIndexMonotonicity();
     }
 
-    function warpTime(uint256 delta) public {
-        delta = bound(delta, 1, 7 days);
-        _updateIndexes();
-        vm.warp(block.timestamp + delta);
-        _assertIndexMonotonicity();
-    }
-
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Helper View Functions
+    // =========================================================================
 
     function sumOfBalances() public view returns (uint256 sum) {
         for (uint256 i; i < _actors.length; i++) {
@@ -119,8 +117,9 @@ contract StakingRewardsHandler is HandlerBase {
         }
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Private
+    // =========================================================================
 
     function _stake(uint256 amount) private {
         _stakingToken.mint(currentActor, amount);
@@ -130,12 +129,13 @@ contract StakingRewardsHandler is HandlerBase {
 
     function _updateIndexes() private {
         ghost_prevIndex = _staking.index();
+        ghost_prevCurrentIndex = _staking.currentIndex();
         ghost_prevUserIndex[currentActor] = _staking.userIndex(currentActor);
     }
 
     function _assertIndexMonotonicity() private view {
         assertGe(_staking.index(), ghost_prevIndex);
-        assertGe(_staking.currentIndex(), ghost_prevIndex);
+        assertGe(_staking.currentIndex(), ghost_prevCurrentIndex);
         assertGe(_staking.userIndex(currentActor), ghost_prevUserIndex[currentActor]);
     }
 }

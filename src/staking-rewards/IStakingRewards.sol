@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 ///
 /// @notice The interface for `StakingRewards`.
 interface IStakingRewards {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when a user stakes tokens.
     ///
@@ -37,8 +38,9 @@ interface IStakingRewards {
     /// @param duration The new reward period duration.
     event DurationUpdate(uint256 duration);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Stakes an amount of tokens in the contract.
     ///
@@ -108,6 +110,13 @@ interface IStakingRewards {
     /// @return The duration, in seconds, for each reward distribution period.
     function duration() external view returns (uint256);
 
+    /// @notice Returns the timestamp at which the latest reward distribution
+    /// period started, or zero before the first deposit.
+    ///
+    /// @return The timestamp at which the latest reward distribution period
+    /// started.
+    function periodStart() external view returns (uint256);
+
     /// @notice Returns the timestamp at which the active reward distribution
     /// period ends.
     ///
@@ -174,6 +183,11 @@ interface IStakingRewards {
     /// @notice Returns whether the current reward distribution period is active.
     ///
     /// @return True if the current reward period is active, false otherwise.
+    ///
+    /// @dev The period counts as active up to and including the second of
+    /// `periodFinish`, although nothing remains to emit by then. This matches
+    /// `setDuration`, which needs the period to have ended strictly before the
+    /// current time.
     function periodRewardActive() external view returns (bool);
 
     /// @notice Returns the total reward amount allocated for the current period.

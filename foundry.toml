@@ -1,20 +1,81 @@
+# ==============================================================================
+# Default profile
+# ==============================================================================
+
 [profile.default]
 src = "src"
 out = "out"
 libs = ["lib"]
-ast = true
-gas_reports = [ "DiscreteStakingRewards", "StakingRewards" , "StakingRewardsMulti" ]
+
+solc_version = "0.8.39"
+evm_version = "osaka"
+optimizer = true
+optimizer_runs = 200
+
+ignored_warnings_from = ["lib/"]
+gas_reports = ["DiscreteStakingRewards", "StakingRewards", "StakingRewardsMulti"]
+
+# Symbolic checks compile everywhere but run only in their profile.
+no_match_path = "test/symbolic/**"
+
+[profile.default.fuzz]
+runs = 512
+
+[profile.default.invariant]
+runs = 128
+depth = 128
+
+# Handlers bound their inputs, so an unexpected revert is a failure.
+fail_on_revert = true
+
+# Forge advances time by up to a week before each call.
+max_time_delay = 604800
+
+# ==============================================================================
+# CI profile
+# ==============================================================================
+
+[profile.ci.fuzz]
+runs = 4096
+
+[profile.ci.invariant]
+runs = 256
+depth = 500
+
+# ==============================================================================
+# Opt-in profiles
+# ==============================================================================
+
+# Native symbolic checks (`forge test --symbolic`); needs z3 on PATH.
+# Profiles inherit the default's exclusion of test/symbolic/, so this replaces
+# it with a pattern that excludes nothing that holds tests.
+[profile.symbolic]
+match_path = "test/symbolic/**"
+no_match_path = "test/mocks/**"
+
+[profile.symbolic.symbolic]
+timeout = 30
+max_paths = 1024
+max_depth = 20000
+invariant_depth = 4
+
+# Forge mutation testing (`just mutate`). A mutant that hangs, for example in
+# a loop whose bound was changed, is recorded as timed out after a minute.
+[mutation]
+timeout = 60
+
+# ==============================================================================
+# Tools
+# ==============================================================================
+
+[lint]
+lint_on_build = false
+
+# Every flagged comparison in src/ is against the reward schedule, which is
+# time-based by design. A validator can shift a timestamp by seconds, which
+# shifts emission by the same few seconds and cannot move funds.
+exclude_lints = ["block-timestamp"]
 
 [fmt]
 bracket_spacing = true
 line_length = 120
-
-[fuzz]
-runs = 2000
-seed = '0x123'
-
-[invariant]
-runs = 256
-depth = 500
-
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

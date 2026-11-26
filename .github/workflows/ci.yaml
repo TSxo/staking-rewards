@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FOUNDRY_VERSION: v1.10.0
+
+jobs:
+  check:
+    name: Format, build, lint, and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: true
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Check formatting
+        run: forge fmt --check
+
+      - name: Build and report sizes
+        run: forge build --sizes
+
+      - name: Lint
+        run: forge lint src test
+
+      - name: Test (CI fuzz and invariant depth)
+        run: forge test --profile ci
+
+  symbolic:
+    name: Symbolic proofs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: true
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      # z3 and just come from the locked Nix dev shell, so CI uses the same
+      # solver version as `nix develop` locally.
+      - uses: cachix/install-nix-action@v32.0.0
+
+      - name: Run symbolic checks
+        run: nix develop --command just symbolic

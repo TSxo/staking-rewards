@@ -1,25 +1,28 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.30;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.39;
 
 import { Base } from "test/Base.t.sol";
 import { StakingRewards } from "src/staking-rewards/StakingRewards.sol";
 import { StakingRewardsHandler } from "./handler/StakingRewardsHandler.t.sol";
 
 contract StakingRewardsInvariantTest is Base {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constants
+    // =========================================================================
 
     uint256 constant DURATION = 7 days;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // State
+    // =========================================================================
 
     StakingRewards staking;
     address stakingAddr;
     StakingRewardsHandler handler;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Setup
+    // =========================================================================
 
     function setUp() public {
         _initBase();
@@ -31,8 +34,9 @@ contract StakingRewardsInvariantTest is Base {
         targetContract(address(handler));
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Invariants
+    // =========================================================================
 
     function invariant_SumOfBalancesEqualsTotalSupply() public view {
         uint256 sum = handler.sumOfBalances();
@@ -79,7 +83,7 @@ contract StakingRewardsInvariantTest is Base {
     }
 
     function invariant_LastUpdatedNotInFuture() public view {
-        assertLe(staking.lastUpdated(), block.timestamp);
+        assertLe(staking.lastUpdated(), vm.getBlockTimestamp());
     }
 
     function invariant_LastUpdatedNotAfterPeriodFinish() public view {
@@ -88,20 +92,26 @@ contract StakingRewardsInvariantTest is Base {
 
     function invariant_LastTimeRewardApplicableValid() public view {
         uint256 lastTime = staking.lastTimeRewardApplicable();
-        assertLe(lastTime, block.timestamp);
+        assertLe(lastTime, vm.getBlockTimestamp());
         assertLe(lastTime, staking.periodFinish());
     }
 
     function invariant_NoAccrualAfterPeriodFinish() public view {
         uint256 periodFinish = staking.periodFinish();
-        if (block.timestamp > periodFinish) {
+        if (vm.getBlockTimestamp() > periodFinish) {
             assertEq(staking.lastTimeRewardApplicable(), periodFinish);
         }
     }
 
-    function invariant_PeriodRewardTotalEqualsRateTimesDuration() public view {
-        uint256 expected = staking.rate() * staking.duration();
+    /// @dev The period's own length, not the current `duration`, which
+    /// `setDuration` may have changed since the period started.
+    function invariant_PeriodRewardTotalEqualsRateTimesPeriodLength() public view {
+        uint256 expected = staking.rate() * (staking.periodFinish() - staking.periodStart());
         assertEq(staking.periodRewardTotal(), expected);
+    }
+
+    function invariant_PeriodStartNotAfterFinish() public view {
+        assertLe(staking.periodStart(), staking.periodFinish());
     }
 
     function invariant_DurationAlwaysNonZero() public view {

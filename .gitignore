@@ -13,8 +13,6 @@ docs/
 # Dotenv file
 .env
 
-# Coverage
-
-lcov.info
-coverage/
+# Local coverage and analysis reports (just coverage, just analysis)
+.local/
 
