@@ -1,19 +1,21 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { Test } from "forge-std/Test.sol";
 import { MockToken } from "test/mocks/MockToken.sol";
 
 contract Base is Test {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constants
+    // =========================================================================
 
     uint256 constant SCALE = 1e18;
     uint256 constant MINT_AMOUNT = 100_000 * SCALE;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // State
+    // =========================================================================
 
     address owner = makeAddr("owner");
     address alice = makeAddr("alice");
@@ -28,8 +30,9 @@ contract Base is Test {
     address stakingTokenAddr;
     address rewardTokenAddr;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Initialize
+    // =========================================================================
 
     /// @dev Initializes this base test contract.
     function _initBase() internal {
@@ -46,8 +49,9 @@ contract Base is Test {
         rewardTokenAddr = address(rewardToken);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Helper Functions
+    // =========================================================================
 
     /// @dev Mints reward tokens to owner, mints staking tokens to each actor,
     /// and grants the `stakingAddr` a maximum allowance over all tokens minted.

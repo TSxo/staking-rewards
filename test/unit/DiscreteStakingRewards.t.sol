@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { DiscreteStakingRewards } from "src/discrete-staking-rewards/DiscreteStakingRewards.sol";
 import { Assert } from "src/utils/Assert.sol";
@@ -16,14 +16,16 @@ interface TestEvents {
 }
 
 contract DiscreteStakingRewardsTest is Base, TestEvents {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // State
+    // =========================================================================
 
     DiscreteStakingRewards staking;
     address stakingAddr;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Setup
+    // =========================================================================
 
     function setUp() public {
         _initBase();
@@ -34,8 +36,9 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         _dealTokens(stakingAddr);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Constructor
+    // =========================================================================
 
     function test_Constructor_InitializesCorrectly() public view {
         assertEq(staking.owner(), owner);
@@ -46,23 +49,24 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(staking.rewardBalance(), 0);
     }
 
-    function test_Constructor_RevertsOnZeroAddressStakingToken() public {
+    function test_RevertWhen_Constructor_StakingTokenIsZeroAddress() public {
         vm.expectRevert(Assert.Assert__ZeroAddress.selector);
         new DiscreteStakingRewards(owner, address(0), rewardTokenAddr);
     }
 
-    function test_Constructor_RevertsOnZeroAddressRewardToken() public {
+    function test_RevertWhen_Constructor_RewardTokenIsZeroAddress() public {
         vm.expectRevert(Assert.Assert__ZeroAddress.selector);
         new DiscreteStakingRewards(owner, stakingTokenAddr, address(0));
     }
 
-    function test_Constructor_RevertsOnSameTokens() public {
+    function test_RevertWhen_Constructor_TokensAreSame() public {
         vm.expectRevert(Assert.Assert__NeFailed.selector);
         new DiscreteStakingRewards(owner, stakingTokenAddr, stakingTokenAddr);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Stake
+    // =========================================================================
 
     function test_Stake_UpdatesBalanceAndTotalSupply() public {
         uint256 amount = 100 * SCALE;
@@ -78,7 +82,7 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(stakingToken.balanceOf(stakingAddr), amount);
     }
 
-    function test_Stake_RevertsOnZeroAmount() public {
+    function test_RevertWhen_Stake_AmountIsZero() public {
         vm.prank(alice);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.stake(0);
@@ -96,8 +100,9 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(stakingToken.balanceOf(stakingAddr), amount);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Unstake
+    // =========================================================================
 
     function test_Unstake_UpdatesBalanceAndTotalSupply() public {
         uint256 stakeAmount = 100 * SCALE;
@@ -119,13 +124,13 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(stakingToken.balanceOf(alice), MINT_AMOUNT - delta);
     }
 
-    function test_Unstake_RevertsOnZeroAmount() public {
+    function test_RevertWhen_Unstake_AmountIsZero() public {
         vm.prank(alice);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.unstake(0);
     }
 
-    function test_Unstake_RevertsOnInsufficientBalance() public {
+    function test_RevertWhen_Unstake_AmountExceedsBalance() public {
         uint256 amount = 100 * SCALE;
 
         vm.prank(alice);
@@ -153,8 +158,9 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(staking.totalSupply(), delta);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Deposit Rewards
+    // =========================================================================
 
     function test_DepositRewards_UpdatesIndex() public {
         uint256 stakeAmount = 100 * SCALE;
@@ -174,19 +180,19 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(rewardToken.balanceOf(stakingAddr), rewardAmount);
     }
 
-    function test_DepositRewards_RevertsOnZero() public {
+    function test_RevertWhen_DepositRewards_AmountIsZero() public {
         vm.prank(owner);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.depositRewards(0);
     }
 
-    function test_DepositRewards_RevertsNonOwner() public {
+    function test_RevertWhen_DepositRewards_CallerIsNotOwner() public {
         vm.prank(alice);
         vm.expectRevert();
         staking.depositRewards(100 * SCALE);
     }
 
-    function test_DepositRewards_RevertsOnZeroTotalSupply() public {
+    function test_RevertWhen_DepositRewards_TotalSupplyIsZero() public {
         uint256 amount = 700 * SCALE;
 
         vm.prank(owner);
@@ -194,9 +200,26 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         staking.depositRewards(amount);
     }
 
+    /// @dev With 10e18 staked, a deposit of 9 base units rounds the index
+    /// increment to zero, so it would be locked and credited to no one. The
+    /// smallest accepted deposit is 10.
+    function test_RevertWhen_DepositRewards_TooSmallToRaiseIndex() public {
+        vm.prank(alice);
+        staking.stake(10 * SCALE);
+
+        vm.prank(owner);
+        vm.expectRevert(Assert.Assert__Zero.selector);
+        staking.depositRewards(9);
+
+        vm.prank(owner);
+        staking.depositRewards(10);
+        assertEq(staking.index(), 1);
+    }
+
     function testFuzz_DepositRewards(uint256 stakeAmount, uint256 rewardAmount, uint256 actorSeed) public {
         stakeAmount = bound(stakeAmount, 1, MINT_AMOUNT);
-        rewardAmount = bound(rewardAmount, 1, MINT_AMOUNT);
+        // The smallest deposit that raises the index.
+        rewardAmount = bound(rewardAmount, stakeAmount / SCALE + 1, MINT_AMOUNT);
 
         address actor = _actor(actorSeed);
 
@@ -210,8 +233,9 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertEq(staking.index(), expectedIndex);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Reward Accrual and Claim
+    // =========================================================================
 
     function test_PendingRewards_AccruesCorrectly() public {
         uint256 stakeAlice = 100 * SCALE;
@@ -274,7 +298,8 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
     function testFuzz_PendingRewards(uint256 stake1, uint256 stake2, uint256 rewardAmount) public {
         stake1 = bound(stake1, 1, 500 * SCALE);
         stake2 = bound(stake2, 1, 500 * SCALE);
-        rewardAmount = bound(rewardAmount, 1, MINT_AMOUNT);
+        // The smallest deposit that raises the index.
+        rewardAmount = bound(rewardAmount, (stake1 + stake2) / SCALE + 1, MINT_AMOUNT);
 
         vm.prank(alice);
         staking.stake(stake1);
@@ -293,10 +318,25 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         assertApproxEqAbs(staking.pendingRewards(bob), pending2, 1000);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Fee on Transfer
+    // =========================================================================
 
-    function test_RejectsFeeOnTransfer() public {
+    function test_RevertWhen_Stake_TokenTakesFee() public {
+        MockFeeToken feeToken = new MockFeeToken(owner, 1000);
+        feeToken.mint(alice, MINT_AMOUNT);
+
+        DiscreteStakingRewards c = new DiscreteStakingRewards(owner, address(feeToken), rewardTokenAddr);
+
+        vm.prank(alice);
+        feeToken.approve(address(c), MINT_AMOUNT);
+
+        vm.expectRevert(Assert.Assert__EqFailed.selector);
+        vm.prank(alice);
+        c.stake(100 * SCALE);
+    }
+
+    function test_RevertWhen_DepositRewards_TokenTakesFee() public {
         uint256 rewardAmount = 100 * SCALE;
 
         MockFeeToken feeToken = new MockFeeToken(owner, 1000);
@@ -318,8 +358,9 @@ contract DiscreteStakingRewardsTest is Base, TestEvents {
         c.depositRewards(rewardAmount);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Views
+    // =========================================================================
 
     function test_Index() public {
         uint256 stakeAmount = 100 * SCALE;

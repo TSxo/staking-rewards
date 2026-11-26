@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 ///
 /// @notice The interface for `StakingRewardsMulti`.
 interface IStakingRewardsMulti {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when a reward token is added to the contract.
     ///
@@ -46,8 +47,9 @@ interface IStakingRewardsMulti {
     /// @param duration The new reward period duration.
     event DurationUpdate(address indexed token, uint256 duration);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Adds a new reward token to the contract.
     ///
@@ -144,6 +146,15 @@ interface IStakingRewardsMulti {
     /// period.
     function duration(address token) external view returns (uint256);
 
+    /// @notice Returns the timestamp at which the reward token's latest
+    /// distribution period started, or zero before its first deposit.
+    ///
+    /// @param token The reward token.
+    ///
+    /// @return The timestamp at which the reward token's latest distribution
+    /// period started.
+    function periodStart(address token) external view returns (uint256);
+
     /// @notice Returns the timestamp at which the reward token's distribution
     /// period ends.
     ///
@@ -229,6 +240,11 @@ interface IStakingRewardsMulti {
     /// @param token The reward token.
     ///
     /// @return True if the current reward period is active, false otherwise.
+    ///
+    /// @dev The period counts as active up to and including the second of
+    /// `periodFinish`, although nothing remains to emit by then. This matches
+    /// `setDuration`, which needs the period to have ended strictly before the
+    /// current time.
     function periodRewardActive(address token) external view returns (bool);
 
     /// @notice Returns the total reward amount allocated for the current period.

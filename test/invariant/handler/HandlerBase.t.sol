@@ -1,25 +1,28 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { Test } from "forge-std/Test.sol";
 
 contract HandlerBase is Test {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constants
+    // =========================================================================
 
     uint256 constant SCALE = 1e18;
     uint256 constant MINT_AMOUNT = 1_000 * SCALE;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // State
+    // =========================================================================
 
     address internal _owner;
     address[] internal _actors;
     address public currentActor;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Modifiers
+    // =========================================================================
 
     /// @dev Executes the function as an actor derived from `actorSeed`.
     modifier useActor(uint256 actorSeed) {
@@ -40,8 +43,9 @@ contract HandlerBase is Test {
         vm.stopPrank();
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Initialize
+    // =========================================================================
 
     /// @dev Initializes this base handler contract.
     function _initHandlerBase(address owner, address[] memory actors) internal {

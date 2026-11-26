@@ -1,34 +1,36 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { Test } from "forge-std/Test.sol";
 import { Assert } from "src/utils/Assert.sol";
 
 contract AssertTest is Test {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Tests - General
+    // =========================================================================
 
     function test_That_PassesWhenTrue() public pure {
         Assert.that(true);
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_That_RevertsWhenFalse() public {
-        vm.expectRevert(Assert.ERR_FAILED);
+    function test_RevertWhen_That_False() public {
+        vm.expectRevert(Assert.Assert__Failed.selector);
         Assert.that(false);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Tests - Address
+    // =========================================================================
 
     function test_Address_NotZero_PassesWhenNonZero() public pure {
         Assert.notZero(address(1));
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Address_NotZero_RevertsWhenZero() public {
-        vm.expectRevert(Assert.ERR_ZERO_ADDRESS);
+    function test_RevertWhen_Address_NotZero_Zero() public {
+        vm.expectRevert(Assert.Assert__ZeroAddress.selector);
         Assert.notZero(address(0));
     }
 
@@ -38,8 +40,8 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Address_Eq_RevertsWhenNotEqual() public {
-        vm.expectRevert(Assert.ERR_EQ_FAILED);
+    function test_RevertWhen_Address_Eq_NotEqual() public {
+        vm.expectRevert(Assert.Assert__EqFailed.selector);
         Assert.eq(address(1), address(2));
     }
 
@@ -48,22 +50,23 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Address_Ne_RevertsWhenEqual() public {
+    function test_RevertWhen_Address_Ne_Equal() public {
         address a = address(1);
-        vm.expectRevert(Assert.ERR_NE_FAILED);
+        vm.expectRevert(Assert.Assert__NeFailed.selector);
         Assert.ne(a, a);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Tests - Uint256
+    // =========================================================================
 
     function test_Uint_NotZero_PassesWhenNonZero() public pure {
         Assert.notZero(uint256(1));
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_NotZero_RevertsWhenZero() public {
-        vm.expectRevert(Assert.ERR_ZERO);
+    function test_RevertWhen_Uint_NotZero_Zero() public {
+        vm.expectRevert(Assert.Assert__Zero.selector);
         Assert.notZero(uint256(0));
     }
 
@@ -73,8 +76,8 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_Eq_RevertsWhenNotEqual() public {
-        vm.expectRevert(Assert.ERR_EQ_FAILED);
+    function test_RevertWhen_Uint_Eq_NotEqual() public {
+        vm.expectRevert(Assert.Assert__EqFailed.selector);
         Assert.eq(uint256(1), uint256(2));
     }
 
@@ -83,9 +86,9 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_Ne_RevertsWhenEqual() public {
+    function test_RevertWhen_Uint_Ne_Equal() public {
         uint256 a = 42;
-        vm.expectRevert(Assert.ERR_NE_FAILED);
+        vm.expectRevert(Assert.Assert__NeFailed.selector);
         Assert.ne(a, a);
     }
 
@@ -94,11 +97,14 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_Lt_RevertsWhenNotLessThan() public {
-        vm.expectRevert(Assert.ERR_LT_FAILED);
+    function test_RevertWhen_Uint_Lt_Greater() public {
+        vm.expectRevert(Assert.Assert__LtFailed.selector);
         Assert.lt(uint256(2), uint256(1));
+    }
 
-        vm.expectRevert(Assert.ERR_LT_FAILED);
+    /// forge-config: default.allow_internal_expect_revert = true
+    function test_RevertWhen_Uint_Lt_Equal() public {
+        vm.expectRevert(Assert.Assert__LtFailed.selector);
         Assert.lt(uint256(1), uint256(1));
     }
 
@@ -107,11 +113,14 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_Gt_RevertsWhenNotGreaterThan() public {
-        vm.expectRevert(Assert.ERR_GT_FAILED);
+    function test_RevertWhen_Uint_Gt_Less() public {
+        vm.expectRevert(Assert.Assert__GtFailed.selector);
         Assert.gt(uint256(1), uint256(2));
+    }
 
-        vm.expectRevert(Assert.ERR_GT_FAILED);
+    /// forge-config: default.allow_internal_expect_revert = true
+    function test_RevertWhen_Uint_Gt_Equal() public {
+        vm.expectRevert(Assert.Assert__GtFailed.selector);
         Assert.gt(uint256(1), uint256(1));
     }
 
@@ -121,8 +130,8 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_Lte_RevertsWhenGreaterThan() public {
-        vm.expectRevert(Assert.ERR_LTE_FAILED);
+    function test_RevertWhen_Uint_Lte_GreaterThan() public {
+        vm.expectRevert(Assert.Assert__LteFailed.selector);
         Assert.lte(uint256(2), uint256(1));
     }
 
@@ -132,8 +141,8 @@ contract AssertTest is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_Uint_Gte_RevertsWhenLessThan() public {
-        vm.expectRevert(Assert.ERR_GTE_FAILED);
+    function test_RevertWhen_Uint_Gte_LessThan() public {
+        vm.expectRevert(Assert.Assert__GteFailed.selector);
         Assert.gte(uint256(1), uint256(2));
     }
 }

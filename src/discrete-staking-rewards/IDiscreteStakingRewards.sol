@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 ///
 /// @notice The interface for `StakingRewards`.
 interface IDiscreteStakingRewards {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Events
+    // =========================================================================
 
     /// @notice Emitted when a user stakes tokens.
     ///
@@ -32,8 +33,9 @@ interface IDiscreteStakingRewards {
     /// @param amount The amount of reward tokens deposited.
     event DepositRewards(uint256 amount);
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions
+    // =========================================================================
 
     /// @notice Stakes an amount of tokens in the contract.
     ///
@@ -70,6 +72,8 @@ interface IDiscreteStakingRewards {
     /// - Only callable by the contract owner.
     /// - Amount to deposit must be greater than zero.
     /// - Total supply must be greater than zero.
+    /// - The deposit must raise the index: `amount * 1e18` must be at least
+    ///   the total supply.
     /// - Caller must have granted this contract sufficient allowance over the
     ///   reward token.
     ///

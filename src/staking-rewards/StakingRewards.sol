@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -13,7 +13,7 @@ import { IStakingRewards } from "./IStakingRewards.sol";
 /// @title StakingRewards
 ///
 /// @author TSxo
-/// @author Modified from Synthetix (https://github.com/Synthetixio/synthetix/blob/master/contracts/StakingRewards.sol)
+/// @author Modified from the Synthetix StakingRewards contract
 ///
 /// @notice A modern reference implementation of the Synthetix StakingRewards
 /// contract.
@@ -23,20 +23,26 @@ import { IStakingRewards } from "./IStakingRewards.sol";
 ///
 /// Important:
 ///
-/// See the top level README for information regarding the algoirthm, important
+/// See the top level README for information regarding the algorithm, important
 /// considerations, and limitations.
 contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Type Declarations
+    // =========================================================================
 
     using SafeERC20 for IERC20;
 
-    // -------------------------------------------------------------------------
-    // State
+    // =========================================================================
+    // Constants
+    // =========================================================================
 
     /// @dev The amount by which the reward index is scaled. Should be sufficiently
     /// high to minimize rounding errors.
     uint256 private constant SCALE = 1e18;
+
+    // =========================================================================
+    // Immutables
+    // =========================================================================
 
     /// @dev The token to be staked.
     IERC20 private immutable STAKING_TOKEN;
@@ -44,8 +50,16 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
     /// @dev The token to be emitted as staking rewards.
     IERC20 private immutable REWARD_TOKEN;
 
+    // =========================================================================
+    // State
+    // =========================================================================
+
     /// @dev The fixed duration, in seconds, for each reward distribution period.
     uint256 private _duration;
+
+    /// @dev The timestamp at which the latest reward distribution period
+    /// started: the time of the latest deposit.
+    uint256 private _periodStart;
 
     /// @dev The timestamp at which the active reward distribution period ends.
     uint256 private _periodFinish;
@@ -74,8 +88,9 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
     /// user's last contract interaction.
     mapping(address => uint256) private _pendingRewards;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constructor
+    // =========================================================================
 
     /// @param owner_           The initial contract owner.
     /// @param stakingToken_    The token to be staked.
@@ -97,8 +112,9 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
         _duration = duration_;
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - External
+    // =========================================================================
 
     /// @inheritdoc IStakingRewards
     function stake(uint256 amount) external nonReentrant {
@@ -143,8 +159,8 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
 
     /// @inheritdoc IStakingRewards
     function setDuration(uint256 newDuration) external onlyOwner {
-        Assert.gt(block.timestamp, _periodFinish);
         Assert.notZero(newDuration);
+        Assert.gt(block.timestamp, _periodFinish);
 
         _duration = newDuration;
 
@@ -170,6 +186,7 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
         Assert.notZero(cachedRate);
 
         _rate = cachedRate;
+        _periodStart = block.timestamp;
         _periodFinish = block.timestamp + cachedDuration;
         _lastUpdated = block.timestamp;
 
@@ -191,6 +208,11 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
     /// @inheritdoc IStakingRewards
     function duration() external view returns (uint256) {
         return _duration;
+    }
+
+    /// @inheritdoc IStakingRewards
+    function periodStart() external view returns (uint256) {
+        return _periodStart;
     }
 
     /// @inheritdoc IStakingRewards
@@ -235,20 +257,17 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
 
     /// @inheritdoc IStakingRewards
     function periodRewardActive() external view returns (bool) {
-        return block.timestamp >= (_periodFinish - _duration) && block.timestamp <= _periodFinish;
+        return _periodFinish != 0 && block.timestamp <= _periodFinish;
     }
 
     /// @inheritdoc IStakingRewards
     function periodRewardTotal() external view returns (uint256) {
-        return _rate * _duration;
+        return _rate * (_periodFinish - _periodStart);
     }
 
     /// @inheritdoc IStakingRewards
     function periodRewardEmitted() external view returns (uint256) {
-        if (block.timestamp > _periodFinish) return _rate * _duration;
-
-        uint256 dt = block.timestamp - (_periodFinish - _duration);
-        return _rate * dt;
+        return _rate * (lastTimeRewardApplicable() - _periodStart);
     }
 
     /// @inheritdoc IStakingRewards
@@ -258,8 +277,9 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
         return _rate * (_periodFinish - block.timestamp);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Public
+    // =========================================================================
 
     /// @inheritdoc IStakingRewards
     function lastTimeRewardApplicable() public view returns (uint256) {
@@ -283,15 +303,16 @@ contract StakingRewards is Ownable, ReentrancyGuard, IStakingRewards {
         return pending + (shares * di / SCALE);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Private
+    // =========================================================================
 
     /// @notice Updates the global and per-user reward state.
     ///
     /// @param account The account to update rewards for.
     ///
-    /// @dev If `account` set to the zero address, only the global reward index
-    /// and timestamp are updated.
+    /// @dev If `account` is set to the zero address, only the global reward
+    /// index and timestamp are updated.
     function _updateRewards(address account) private {
         _index = currentIndex();
         _lastUpdated = lastTimeRewardApplicable();

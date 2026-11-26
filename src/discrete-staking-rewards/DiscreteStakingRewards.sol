@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -22,26 +22,36 @@ import { IDiscreteStakingRewards } from "./IDiscreteStakingRewards.sol";
 ///
 /// Important:
 ///
-/// See the top level README for information regarding the algoirthm, important
+/// See the top level README for information regarding the algorithm, important
 /// considerations, and limitations.
 contract DiscreteStakingRewards is Ownable, ReentrancyGuard, IDiscreteStakingRewards {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Type Declarations
+    // =========================================================================
 
     using SafeERC20 for IERC20;
 
-    // -------------------------------------------------------------------------
-    // State
+    // =========================================================================
+    // Constants
+    // =========================================================================
 
     /// @dev The amount by which the reward index is scaled. Should be sufficiently
     /// high to minimize rounding errors.
     uint256 private constant SCALE = 1e18;
+
+    // =========================================================================
+    // Immutables
+    // =========================================================================
 
     /// @dev The token to be staked.
     IERC20 private immutable STAKING_TOKEN;
 
     /// @dev The token to be emitted as staking rewards.
     IERC20 private immutable REWARD_TOKEN;
+
+    // =========================================================================
+    // State
+    // =========================================================================
 
     /// @dev Tracks the cumulative amount of reward tokens emitted per unit of
     /// staked token from the start of the contract.
@@ -61,8 +71,9 @@ contract DiscreteStakingRewards is Ownable, ReentrancyGuard, IDiscreteStakingRew
     /// user's last contract interaction.
     mapping(address => uint256) private _pendingRewards;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constructor
+    // =========================================================================
 
     /// @param owner_           The initial contract owner.
     /// @param stakingToken_    The token to be staked.
@@ -80,8 +91,9 @@ contract DiscreteStakingRewards is Ownable, ReentrancyGuard, IDiscreteStakingRew
         REWARD_TOKEN = IERC20(rewardToken_);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - External
+    // =========================================================================
 
     /// @inheritdoc IDiscreteStakingRewards
     function stake(uint256 amount) external nonReentrant {
@@ -129,7 +141,12 @@ contract DiscreteStakingRewards is Ownable, ReentrancyGuard, IDiscreteStakingRew
         Assert.notZero(amount);
         Assert.notZero(_totalSupply);
 
-        _index += amount * SCALE / _totalSupply;
+        // A deposit too small to move the index would be locked in the
+        // contract, credited to no one.
+        uint256 increment = amount * SCALE / _totalSupply;
+        Assert.notZero(increment);
+
+        _index += increment;
 
         _checkedTransferIn(REWARD_TOKEN, amount);
 
@@ -171,8 +188,9 @@ contract DiscreteStakingRewards is Ownable, ReentrancyGuard, IDiscreteStakingRew
         return REWARD_TOKEN.balanceOf(address(this));
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Public
+    // =========================================================================
 
     /// @inheritdoc IDiscreteStakingRewards
     function pendingRewards(address account) public view returns (uint256) {
@@ -183,8 +201,9 @@ contract DiscreteStakingRewards is Ownable, ReentrancyGuard, IDiscreteStakingRew
         return pending + (shares * di / SCALE);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Private
+    // =========================================================================
 
     /// @notice Updates the per-user reward state.
     ///

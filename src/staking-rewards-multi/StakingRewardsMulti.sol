@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -13,7 +13,7 @@ import { IStakingRewardsMulti } from "./IStakingRewardsMulti.sol";
 /// @title StakingRewardsMulti
 ///
 /// @author TSxo
-/// @author Modified from Synthetix (https://github.com/Synthetixio/synthetix/blob/master/contracts/StakingRewardsMulti.sol)
+/// @author Modified from Curve (https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol)
 ///
 /// @notice A modern reference implementation of the Synthetix StakingRewards
 /// contract that allows multiple reward tokens to be emitted.
@@ -23,11 +23,12 @@ import { IStakingRewardsMulti } from "./IStakingRewardsMulti.sol";
 ///
 /// Important:
 ///
-/// See the top level README for information regarding the algoirthm, important
+/// See the top level README for information regarding the algorithm, important
 /// considerations, and limitations.
 contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Type Declarations
+    // =========================================================================
 
     using SafeERC20 for IERC20;
 
@@ -35,26 +36,43 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
     struct RewardConfig {
         // The fixed duration, in seconds, for each reward distribution period.
         uint256 duration;
+
+        // The timestamp at which the latest reward distribution period
+        // started: the time of the latest deposit.
+        uint256 periodStart;
+
         // The timestamp at which the active reward distribution period ends.
         uint256 periodFinish;
+
         // The timestamp at which the last global rewards update occurred.
         uint256 lastUpdated;
+
         // The amount of rewards, per second, to emit.
         uint256 rate;
+
         // Tracks the cumulative amount of reward tokens emitted per unit of
         // staked token from the start of the contract up until `lastUpdated`.
         uint256 index;
     }
 
-    // -------------------------------------------------------------------------
-    // State
+    // =========================================================================
+    // Constants
+    // =========================================================================
 
     /// @dev The amount by which the reward index is scaled. Should be sufficiently
     /// high to minimize rounding errors.
     uint256 private constant SCALE = 1e18;
 
+    // =========================================================================
+    // Immutables
+    // =========================================================================
+
     /// @dev The token to be staked.
     IERC20 private immutable STAKING_TOKEN;
+
+    // =========================================================================
+    // State
+    // =========================================================================
 
     /// @dev The total amount of staked tokens.
     uint256 private _totalSupply;
@@ -78,8 +96,9 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
     /// @dev A list of all supported reward tokens.
     address[] private _rewardTokens;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constructor
+    // =========================================================================
 
     /// @param owner_           The initial contract owner.
     /// @param stakingToken_    The token to be staked.
@@ -91,8 +110,9 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
         STAKING_TOKEN = IERC20(stakingToken_);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - External
+    // =========================================================================
 
     /// @inheritdoc IStakingRewardsMulti
     function addReward(address token, uint256 initialDuration) external onlyOwner {
@@ -188,6 +208,7 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
 
         Assert.notZero(cfg.rate);
 
+        cfg.periodStart = block.timestamp;
         cfg.periodFinish = block.timestamp + cfg.duration;
         cfg.lastUpdated = block.timestamp;
 
@@ -209,6 +230,11 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
     /// @inheritdoc IStakingRewardsMulti
     function duration(address token) external view returns (uint256) {
         return _config[token].duration;
+    }
+
+    /// @inheritdoc IStakingRewardsMulti
+    function periodStart(address token) external view returns (uint256) {
+        return _config[token].periodStart;
     }
 
     /// @inheritdoc IStakingRewardsMulti
@@ -253,24 +279,20 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
 
     /// @inheritdoc IStakingRewardsMulti
     function periodRewardActive(address token) external view returns (bool) {
-        RewardConfig storage cfg = _config[token];
-        return block.timestamp >= (cfg.periodFinish - cfg.duration) && block.timestamp <= cfg.periodFinish;
+        uint256 finish = _config[token].periodFinish;
+        return finish != 0 && block.timestamp <= finish;
     }
 
     /// @inheritdoc IStakingRewardsMulti
     function periodRewardTotal(address token) external view returns (uint256) {
         RewardConfig storage cfg = _config[token];
-        return cfg.rate * cfg.duration;
+        return cfg.rate * (cfg.periodFinish - cfg.periodStart);
     }
 
     /// @inheritdoc IStakingRewardsMulti
     function periodRewardEmitted(address token) external view returns (uint256) {
         RewardConfig storage cfg = _config[token];
-
-        if (block.timestamp > cfg.periodFinish) return cfg.rate * cfg.duration;
-
-        uint256 dt = block.timestamp - (cfg.periodFinish - cfg.duration);
-        return cfg.rate * dt;
+        return cfg.rate * (lastTimeRewardApplicable(token) - cfg.periodStart);
     }
 
     /// @inheritdoc IStakingRewardsMulti
@@ -282,8 +304,9 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
         return cfg.rate * (cfg.periodFinish - block.timestamp);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Public
+    // =========================================================================
 
     /// @inheritdoc IStakingRewardsMulti
     function lastTimeRewardApplicable(address token) public view returns (uint256) {
@@ -309,14 +332,15 @@ contract StakingRewardsMulti is Ownable, ReentrancyGuard, IStakingRewardsMulti {
         return pending + (shares * di / SCALE);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Functions - Private
+    // =========================================================================
 
     /// @notice Updates the global and per-user reward state.
     ///
     /// @param account The account to update rewards for.
     ///
-    /// @dev If `account` set to the zero address, only global reward indexes
+    /// @dev If `account` is set to the zero address, only global reward indexes
     /// and timestamps are updated.
     function _updateRewards(address account) private {
         uint256 n = _rewardTokens.length;

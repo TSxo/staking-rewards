@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.39;
 
 import { StakingRewards } from "src/staking-rewards/StakingRewards.sol";
 import { Assert } from "src/utils/Assert.sol";
@@ -17,19 +17,22 @@ interface TestEvents {
 }
 
 contract StakingRewardsTest is Base, TestEvents {
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Constants
+    // =========================================================================
 
     uint256 constant DURATION = 7 days;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // State
+    // =========================================================================
 
     StakingRewards staking;
     address stakingAddr;
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Setup
+    // =========================================================================
 
     function setUp() public {
         _initBase();
@@ -40,8 +43,9 @@ contract StakingRewardsTest is Base, TestEvents {
         _dealTokens(stakingAddr);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Constructor
+    // =========================================================================
 
     function test_Constructor_InitializesCorrectly() public view {
         assertEq(staking.owner(), owner);
@@ -56,28 +60,29 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(staking.rewardBalance(), 0);
     }
 
-    function test_Constructor_RevertsOnZeroAddressStakingToken() public {
+    function test_RevertWhen_Constructor_StakingTokenIsZeroAddress() public {
         vm.expectRevert(Assert.Assert__ZeroAddress.selector);
         new StakingRewards(owner, address(0), rewardTokenAddr, DURATION);
     }
 
-    function test_Constructor_RevertsOnZeroAddressRewardToken() public {
+    function test_RevertWhen_Constructor_RewardTokenIsZeroAddress() public {
         vm.expectRevert(Assert.Assert__ZeroAddress.selector);
         new StakingRewards(owner, stakingTokenAddr, address(0), DURATION);
     }
 
-    function test_Constructor_RevertsOnZeroDuration() public {
+    function test_RevertWhen_Constructor_DurationIsZero() public {
         vm.expectRevert(Assert.Assert__Zero.selector);
         new StakingRewards(owner, stakingTokenAddr, rewardTokenAddr, 0);
     }
 
-    function test_Constructor_RevertsOnSameTokens() public {
+    function test_RevertWhen_Constructor_TokensAreSame() public {
         vm.expectRevert(Assert.Assert__NeFailed.selector);
         new StakingRewards(owner, stakingTokenAddr, stakingTokenAddr, DURATION);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Stake
+    // =========================================================================
 
     function test_Stake_UpdatesBalanceAndTotalSupply() public {
         uint256 amount = 100 * SCALE;
@@ -93,7 +98,7 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(stakingToken.balanceOf(stakingAddr), amount);
     }
 
-    function test_Stake_RevertsOnZeroAmount() public {
+    function test_RevertWhen_Stake_AmountIsZero() public {
         vm.prank(alice);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.stake(0);
@@ -114,8 +119,9 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(stakingToken.balanceOf(actor), initialBalance - amount);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Unstake
+    // =========================================================================
 
     function test_Unstake_UpdatesBalanceAndTotalSupply() public {
         uint256 stakeAmount = 100 * SCALE;
@@ -137,13 +143,13 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(stakingToken.balanceOf(alice), MINT_AMOUNT - delta);
     }
 
-    function test_Unstake_RevertsOnZeroAmount() public {
+    function test_RevertWhen_Unstake_AmountIsZero() public {
         vm.prank(alice);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.unstake(0);
     }
 
-    function test_Unstake_RevertsOnInsufficientBalance() public {
+    function test_RevertWhen_Unstake_AmountExceedsBalance() public {
         uint256 amount = 100 * SCALE;
 
         vm.prank(alice);
@@ -171,8 +177,9 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(staking.totalSupply(), delta);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Deposit Rewards
+    // =========================================================================
 
     function test_DepositRewards_SetsRateAndPeriod() public {
         uint256 amount = 700 * SCALE;
@@ -184,18 +191,18 @@ contract StakingRewardsTest is Base, TestEvents {
         staking.depositRewards(amount);
 
         assertEq(staking.rate(), amount / DURATION);
-        assertEq(staking.periodFinish(), block.timestamp + DURATION);
-        assertEq(staking.lastUpdated(), block.timestamp);
+        assertEq(staking.periodFinish(), vm.getBlockTimestamp() + DURATION);
+        assertEq(staking.lastUpdated(), vm.getBlockTimestamp());
         assertEq(rewardToken.balanceOf(stakingAddr), amount);
     }
 
-    function test_DepositRewards_RevertsOnZero() public {
+    function test_RevertWhen_DepositRewards_AmountIsZero() public {
         vm.prank(owner);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.depositRewards(0);
     }
 
-    function test_DepositRewards_RevertsNonOwner() public {
+    function test_RevertWhen_DepositRewards_CallerIsNotOwner() public {
         vm.prank(alice);
         vm.expectRevert();
         staking.depositRewards(100 * SCALE);
@@ -207,7 +214,7 @@ contract StakingRewardsTest is Base, TestEvents {
         vm.prank(owner);
         staking.depositRewards(initialAmount);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
         uint256 additional = 300 * SCALE;
         uint256 remainingTime = DURATION - 1 days;
@@ -218,7 +225,7 @@ contract StakingRewardsTest is Base, TestEvents {
         staking.depositRewards(additional);
 
         assertEq(staking.rate(), newRate);
-        assertEq(staking.periodFinish(), block.timestamp + DURATION);
+        assertEq(staking.periodFinish(), vm.getBlockTimestamp() + DURATION);
     }
 
     function testFuzz_DepositRewards(uint256 amount) public {
@@ -228,11 +235,12 @@ contract StakingRewardsTest is Base, TestEvents {
         staking.depositRewards(amount);
 
         assertEq(staking.rate(), amount / DURATION);
-        assertEq(staking.periodFinish(), block.timestamp + DURATION);
+        assertEq(staking.periodFinish(), vm.getBlockTimestamp() + DURATION);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Set Duration
+    // =========================================================================
 
     function test_SetDuration_UpdatesDuration() public {
         uint256 newDuration = 14 days;
@@ -246,7 +254,7 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(staking.duration(), newDuration);
     }
 
-    function test_SetDuration_RevertsDuringActivePeriod() public {
+    function test_RevertWhen_SetDuration_PeriodIsActive() public {
         vm.prank(owner);
         staking.depositRewards(700 * SCALE);
 
@@ -255,20 +263,21 @@ contract StakingRewardsTest is Base, TestEvents {
         staking.setDuration(14 days);
     }
 
-    function test_SetDuration_RevertsOnZero() public {
+    function test_RevertWhen_SetDuration_DurationIsZero() public {
         vm.prank(owner);
         vm.expectRevert(Assert.Assert__Zero.selector);
         staking.setDuration(0);
     }
 
-    function test_SetDuration_RevertsNonOwner() public {
+    function test_RevertWhen_SetDuration_CallerIsNotOwner() public {
         vm.prank(alice);
         vm.expectRevert();
         staking.setDuration(14 days);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Reward Accrual and Claim
+    // =========================================================================
 
     function test_PendingRewards_AccruesCorrectly() public {
         uint256 deposit = 700 * SCALE;
@@ -280,7 +289,7 @@ contract StakingRewardsTest is Base, TestEvents {
         vm.prank(alice);
         staking.stake(stake);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
         uint256 expectedPending = (staking.rate() * 1 days * stake) / stake;
         assertEq(staking.pendingRewards(alice), expectedPending);
@@ -288,7 +297,7 @@ contract StakingRewardsTest is Base, TestEvents {
         vm.prank(bob);
         staking.stake(stake);
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days);
 
         // For Alice: previous + share of next day.
         uint256 secondDayEarned = (staking.rate() * 1 days * stake) / (stake * 2);
@@ -308,7 +317,7 @@ contract StakingRewardsTest is Base, TestEvents {
         vm.prank(alice);
         staking.stake(stakeAmount);
 
-        vm.warp(block.timestamp + DURATION);
+        vm.warp(vm.getBlockTimestamp() + DURATION);
 
         uint256 pending = staking.pendingRewards(alice);
         assertEq(pending, rewardAmount);
@@ -345,7 +354,7 @@ contract StakingRewardsTest is Base, TestEvents {
         vm.prank(bob);
         staking.stake(stake2);
 
-        vm.warp(block.timestamp + time);
+        vm.warp(vm.getBlockTimestamp() + time);
 
         uint256 totalStaked = stake1 + stake2;
         uint256 expectedTotalRewards = staking.rate() * time;
@@ -356,10 +365,25 @@ contract StakingRewardsTest is Base, TestEvents {
         assertApproxEqAbs(staking.pendingRewards(bob), pending2, 1000);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Fee on Transfer
+    // =========================================================================
 
-    function test_RejectsFeeOnTransfer() public {
+    function test_RevertWhen_Stake_TokenTakesFee() public {
+        MockFeeToken feeToken = new MockFeeToken(owner, 1000);
+        feeToken.mint(alice, MINT_AMOUNT);
+
+        StakingRewards c = new StakingRewards(owner, address(feeToken), rewardTokenAddr, DURATION);
+
+        vm.prank(alice);
+        feeToken.approve(address(c), MINT_AMOUNT);
+
+        vm.expectRevert(Assert.Assert__EqFailed.selector);
+        vm.prank(alice);
+        c.stake(100 * SCALE);
+    }
+
+    function test_RevertWhen_DepositRewards_TokenTakesFee() public {
         uint256 rewardAmount = 100 * SCALE;
 
         MockFeeToken feeToken = new MockFeeToken(owner, 1000);
@@ -375,18 +399,19 @@ contract StakingRewardsTest is Base, TestEvents {
         c.depositRewards(rewardAmount);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Test - Views
+    // =========================================================================
 
     function test_LastTimeRewardApplicable() public {
         vm.prank(owner);
         staking.depositRewards(700 * SCALE);
-        assertEq(staking.lastTimeRewardApplicable(), block.timestamp);
+        assertEq(staking.lastTimeRewardApplicable(), vm.getBlockTimestamp());
 
-        vm.warp(block.timestamp + DURATION / 2);
-        assertEq(staking.lastTimeRewardApplicable(), block.timestamp);
+        vm.warp(vm.getBlockTimestamp() + DURATION / 2);
+        assertEq(staking.lastTimeRewardApplicable(), vm.getBlockTimestamp());
 
-        vm.warp(block.timestamp + DURATION);
+        vm.warp(vm.getBlockTimestamp() + DURATION);
         assertEq(staking.lastTimeRewardApplicable(), staking.periodFinish());
     }
 
@@ -399,7 +424,7 @@ contract StakingRewardsTest is Base, TestEvents {
         staking.stake(stakeAmount);
 
         uint256 dt = 1 days;
-        vm.warp(block.timestamp + dt);
+        vm.warp(vm.getBlockTimestamp() + dt);
 
         uint256 expectedIndex = (staking.rate() * dt * SCALE) / stakeAmount;
         assertEq(staking.currentIndex(), expectedIndex);
@@ -413,7 +438,7 @@ contract StakingRewardsTest is Base, TestEvents {
         assertTrue(staking.periodRewardActive());
 
         // Halfway through: still active.
-        vm.warp(block.timestamp + staking.duration() / 2);
+        vm.warp(vm.getBlockTimestamp() + staking.duration() / 2);
         assertTrue(staking.periodRewardActive());
 
         // After finish: inactive.
@@ -438,8 +463,8 @@ contract StakingRewardsTest is Base, TestEvents {
         staking.depositRewards(700 * SCALE);
 
         // Halfway through.
-        vm.warp(block.timestamp + staking.duration() / 2);
-        uint256 expected = staking.rate() * (staking.periodFinish() - block.timestamp);
+        vm.warp(vm.getBlockTimestamp() + staking.duration() / 2);
+        uint256 expected = staking.rate() * (staking.periodFinish() - vm.getBlockTimestamp());
         assertEq(staking.periodRewardRemaining(), expected);
 
         // After finish.
@@ -455,12 +480,95 @@ contract StakingRewardsTest is Base, TestEvents {
         assertEq(staking.periodRewardEmitted(), 0);
 
         // Halfway through.
-        vm.warp(block.timestamp + staking.duration() / 2);
+        vm.warp(vm.getBlockTimestamp() + staking.duration() / 2);
         uint256 expected = staking.rate() * (staking.duration() / 2);
         assertEq(staking.periodRewardEmitted(), expected);
 
         // After finish.
         vm.warp(staking.periodFinish() + 1);
         assertEq(staking.periodRewardEmitted(), staking.rate() * staking.duration());
+    }
+
+    // =========================================================================
+    // Test - Period Views (regressions)
+    // =========================================================================
+
+    /// @dev Regression: `periodRewardActive` underflowed before the first
+    /// deposit, because it computed `periodFinish - duration` from zero.
+    function test_PeriodViews_BeforeFirstDeposit() public view {
+        assertEq(staking.periodStart(), 0);
+        assertFalse(staking.periodRewardActive());
+        assertEq(staking.periodRewardTotal(), 0);
+        assertEq(staking.periodRewardEmitted(), 0);
+        assertEq(staking.periodRewardRemaining(), 0);
+    }
+
+    /// @dev Regression: after `setDuration`, the views paired the finished
+    /// period's rate with the new duration, misreporting what it emitted.
+    function test_PeriodViews_AfterSetDuration() public {
+        vm.prank(owner);
+        staking.depositRewards(700 * SCALE);
+        uint256 periodRate = staking.rate();
+
+        vm.warp(staking.periodFinish() + 1);
+        vm.prank(owner);
+        staking.setDuration(30 days);
+
+        assertFalse(staking.periodRewardActive());
+        assertEq(staking.periodRewardTotal(), periodRate * DURATION);
+        assertEq(staking.periodRewardEmitted(), periodRate * DURATION);
+        assertEq(staking.periodRewardRemaining(), 0);
+    }
+
+    /// @dev A top-up restarts the period: it begins at the top-up and runs for
+    /// the full duration at the new rate.
+    function test_PeriodViews_TopUpRestartsPeriod() public {
+        vm.prank(owner);
+        staking.depositRewards(700 * SCALE);
+
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        vm.prank(owner);
+        staking.depositRewards(700 * SCALE);
+
+        uint256 topUp = vm.getBlockTimestamp();
+        assertEq(staking.periodStart(), topUp);
+        assertEq(staking.periodFinish(), topUp + DURATION);
+        assertEq(staking.periodRewardTotal(), staking.rate() * DURATION);
+        assertEq(staking.periodRewardEmitted(), 0);
+    }
+
+    // =========================================================================
+    // Test - Known Limits
+    // =========================================================================
+
+    /// @dev Known limit, inherited from Synthetix: each update floors the index
+    /// increment, so frequent checkpoints can erase accrual when
+    /// `rate * dt * SCALE < totalSupply`. A claim with nothing owed still
+    /// checkpoints, so anyone can trigger an update.
+    function test_Checkpoints_FrequentUpdatesLoseRoundedAccrual() public {
+        vm.prank(alice);
+        staking.stake(10 * SCALE);
+
+        // A deposit of `DURATION` base units sets a rate of 1 per second.
+        vm.prank(owner);
+        staking.depositRewards(DURATION);
+        assertEq(staking.rate(), 1);
+
+        uint256 snapshot = vm.snapshotState();
+
+        // Ten 1-second checkpoints, each by an account with nothing staked.
+        for (uint256 i; i < 10; ++i) {
+            vm.warp(vm.getBlockTimestamp() + 1);
+            vm.prank(bob);
+            staking.claimRewards();
+        }
+        assertEq(staking.pendingRewards(alice), 0, "frequent checkpoints");
+
+        // The same 10 seconds in one update.
+        vm.revertToState(snapshot);
+        vm.warp(vm.getBlockTimestamp() + 10);
+        vm.prank(bob);
+        staking.claimRewards();
+        assertEq(staking.pendingRewards(alice), 10, "one checkpoint");
     }
 }
