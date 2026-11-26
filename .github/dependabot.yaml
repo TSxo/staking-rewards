@@ -1,0 +1,29 @@
+# Dependabot version updates: check each ecosystem monthly, grouping eligible
+# updates into a single pull request per ecosystem, with a 14-day cooldown.
+#
+# Not covered here, and bumped by hand instead:
+# - The Foundry libraries in lib/. Update them to tags with `forge update`.
+# - The Forge version pinned in the CI workflow.
+version: 2
+updates:
+  # Action versions in .github/workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # The inputs in flake.lock.
+  - package-ecosystem: nix
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      nix:
+        patterns: ["*"]
